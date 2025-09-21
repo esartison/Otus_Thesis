@@ -14,19 +14,7 @@
 <img width="885" height="67" alt="image" src="https://github.com/user-attachments/assets/99e11dcd-d8e1-46ed-9df4-28977d90c2fa" />
 <img width="483" height="290" alt="image" src="https://github.com/user-attachments/assets/5d03fdb9-0be7-4d68-8977-5f6a44adbb1f" />
 
--Проблема
-Не все ноды видны из-за того, что CoreDns процесс не работает. Использовал релизный канал Stable
->kubectl get pods -n kube-system -l k8s-app=kube-dns -o wide
-<img width="982" height="52" alt="image" src="https://github.com/user-attachments/assets/6a0a8c3a-69b7-4ffa-968a-609e3d095102" />
-
-При попытке открыть консоль из GUI тоже получал ошибку
-<img width="1035" height="257" alt="image" src="https://github.com/user-attachments/assets/f08567a9-8288-440d-80b7-7b30b85dafa7" />
-<img width="1089" height="346" alt="image" src="https://github.com/user-attachments/assets/2fe7d1c1-1ff4-435a-aac5-f6995244f763" />
-
--Решение
-Попробовал перезапустить Kubernetes Cluster через GUI
-<img width="1018" height="200" alt="image" src="https://github.com/user-attachments/assets/bfa49b01-a983-4102-97a7-e0086009c6d3" />
-Не помогло, создаем Kubernetes cluster на одной ноде.
+Создал кластер чтобы проверить что все работает, для экономии средств не буду его использовать. 
 
 
 ### Создаем НЕвысокодоступный Kubernetes кластер в 1-й зоне
@@ -34,18 +22,13 @@
 <img width="910" height="373" alt="image" src="https://github.com/user-attachments/assets/a4d3c7b0-5ed7-49f8-83df-24f7337416b2" />
 
 
-Тоже ошибка 
-<img width="979" height="52" alt="image" src="https://github.com/user-attachments/assets/d7525ac1-a835-436e-82df-3b66a1f6bd27" />
-Gui консоль не открывается
-<img width="756" height="269" alt="image" src="https://github.com/user-attachments/assets/41beaf26-5838-473e-86f9-a2524e73bec7" />
+### Создаем группу рабочих узлов workerkub в Kubernetes кластере otuskuberes
+В группе создаем 3 узла(node)
+<img width="1039" height="112" alt="image" src="https://github.com/user-attachments/assets/fcd8f2cf-998d-4d7d-8a38-bbe3ded26d74" />
 
+<img width="521" height="564" alt="image" src="https://github.com/user-attachments/assets/26ff7c77-a081-47fe-aaf1-30e813e23bf8" />
 
-### Создаем НЕвысокодоступный Kubernetes кластер в 1-й зоне с версией 1.30
-Пробую создать с самой низкой из доступных версий
-<img width="794" height="400" alt="image" src="https://github.com/user-attachments/assets/0f9e7310-240e-48b5-b044-a69c83394b62" />
-
- 
-
+<img width="1583" height="333" alt="image" src="https://github.com/user-attachments/assets/3fbd7906-14b8-437a-9ab6-8ea9a390a940" />
 
 
 ### Создание VM с Ubuntu для управления нашим Kubernetes cluster
@@ -69,7 +52,7 @@ sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
 esartison@kubermgt01:~$ kubectl version --client
 Client Version: v1.34.1
 Kustomize Version: v5.7.1
-esartison@kubermgt01:~$ kubectl version --client --output=yaml
+esartison@kubermgt01:~$  kubectl version --client --output=yaml
 clientVersion:
   buildDate: "2025-09-09T19:44:50Z"
   compiler: gc
@@ -87,46 +70,24 @@ sudo apt install postgresql-client
 
 
 # Настройка kubectl
-esartison@kubermgt01:~$ yc managed-kubernetes cluster get-credentials --id catfgm5va6vueb71unfh --external
-Context 'yc-otuskubercluster1' was added as default to kubeconfig '/home/esartison/.kube/config'. Check connection to cluster using 'kubectl cluster-info --kubeconfig /home/esartison/.kube/config'.
-Note, that authentication depends on 'yc' and its config profile 'default'. To access clusters using the Kubernetes API, please use Kubernetes Service Account.
+esartison@kubermgt01:~$ yc managed-kubernetes cluster get-credentials --id catofhs7gt4b2i448mdg --external
 
 esartison@kubermgt01:~$ kubectl config view
 apiVersion: v1
 clusters:
 - cluster:
     certificate-authority-data: DATA+OMITTED
-    server: https://158.160.179.174
-  name: yc-managed-k8s-cat1bhkp5006a840e3f0
-- cluster:
-    certificate-authority-data: DATA+OMITTED
-    server: https://51.250.42.68
-  name: yc-managed-k8s-catfgm5va6vueb71unfh
+    server: https://51.250.13.148
+  name: yc-managed-k8s-catofhs7gt4b2i448mdg
 contexts:
 - context:
-    cluster: yc-managed-k8s-cat1bhkp5006a840e3f0
-    user: yc-managed-k8s-cat1bhkp5006a840e3f0
-  name: yc-otuskubercluster
-- context:
-    cluster: yc-managed-k8s-catfgm5va6vueb71unfh
-    user: yc-managed-k8s-catfgm5va6vueb71unfh
-  name: yc-otuskubercluster1
-current-context: yc-otuskubercluster1
+    cluster: yc-managed-k8s-catofhs7gt4b2i448mdg
+    user: yc-managed-k8s-catofhs7gt4b2i448mdg
+  name: yc-otuskuberes
+current-context: yc-otuskuberes
 kind: Config
 users:
-- name: yc-managed-k8s-cat1bhkp5006a840e3f0
-  user:
-    exec:
-      apiVersion: client.authentication.k8s.io/v1beta1
-      args:
-      - k8s
-      - create-token
-      - --profile=default
-      command: /home/esartison/yandex-cloud/bin/yc
-      env: null
-      interactiveMode: IfAvailable
-      provideClusterInfo: false
-- name: yc-managed-k8s-catfgm5va6vueb71unfh
+- name: yc-managed-k8s-catofhs7gt4b2i448mdg
   user:
     exec:
       apiVersion: client.authentication.k8s.io/v1beta1
@@ -140,11 +101,52 @@ users:
       provideClusterInfo: false
 
 
+# Проверка состояния Kubernetes Cluster
+esartison@kubermgt01:~$ yc container cluster list
++----------------------+-------------+---------------------+---------+---------+-----------------------+---------------------+
+|          ID          |    NAME     |     CREATED AT      | HEALTH  | STATUS  |   EXTERNAL ENDPOINT   |  INTERNAL ENDPOINT  |
++----------------------+-------------+---------------------+---------+---------+-----------------------+---------------------+
+| catofhs7gt4b2i448mdg | otuskuberes | 2025-09-21 04:47:53 | HEALTHY | RUNNING | https://51.250.13.148 | https://10.128.0.23 |
++----------------------+-------------+---------------------+---------+---------+-----------------------+---------------------+
 
+esartison@kubermgt01:~$ yc container cluster list-node-groups catofhs7gt4b2i448mdg
++----------------------+-----------+----------------------+---------------------+---------+------+
+|          ID          |   NAME    |  INSTANCE GROUP ID   |     CREATED AT      | STATUS  | SIZE |
++----------------------+-----------+----------------------+---------------------+---------+------+
+| cat0rvr566p70e22316d | workerkub | cl1o2cumtlodjr8887jm | 2025-09-21 05:09:51 | RUNNING |    3 |
++----------------------+-----------+----------------------+---------------------+---------+------+
 
-yc container cluster list
-yc container cluster list-node-groups cat1bhkp5006a840e3f0
-yc compute disk list
+esartison@kubermgt01:~$ yc compute disk list
++----------------------+-------------------------------------+--------------+---------------+--------+----------------------+-----------------+-------------+
+|          ID          |                NAME                 |     SIZE     |     ZONE      | STATUS |     INSTANCE IDS     | PLACEMENT GROUP | DESCRIPTION |
++----------------------+-------------------------------------+--------------+---------------+--------+----------------------+-----------------+-------------+
+| epdkkd84di8galak0lpl |                                     | 103079215104 | ru-central1-b | READY  | epd6dvet7p0u6s2ego74 |                 |             |
+| epdnjfjbcvnbkrbhrqbf |                                     | 103079215104 | ru-central1-b | READY  | epdah132nbki3j48iukf |                 |             |
+| epdt4mqd7ik32dr6r5nb |                                     | 103079215104 | ru-central1-b | READY  | epdklnfli43m5hmb3oqp |                 |             |
+| epdvmi8ssrai708jqce4 | disk-ubuntu-24-04-lts-1758442581983 |  21474836480 | ru-central1-b | READY  | epd3vtkpnbg6erpsu0m2 |                 |             |
++----------------------+-------------------------------------+--------------+---------------+--------+----------------------+-----------------+-------------+
+
+esartison@kubermgt01:~$ kubectl get nodes
+NAME                        STATUS   ROLES    AGE     VERSION
+cl1o2cumtlodjr8887jm-apez   Ready    <none>   3h16m   v1.32.1
+cl1o2cumtlodjr8887jm-ubor   Ready    <none>   3h17m   v1.32.1
+cl1o2cumtlodjr8887jm-utaq   Ready    <none>   3h17m   v1.32.1
+
+esartison@kubermgt01:~$ kubectl get nodes
+NAME                        STATUS   ROLES    AGE     VERSION
+cl1o2cumtlodjr8887jm-apez   Ready    <none>   3h16m   v1.32.1
+cl1o2cumtlodjr8887jm-ubor   Ready    <none>   3h17m   v1.32.1
+cl1o2cumtlodjr8887jm-utaq   Ready    <none>   3h17m   v1.32.1
+
+ get allesartison@kubermgt01:~$ kubectl get all --ignore-not-found
+NAME                 TYPE        CLUSTER-IP    EXTERNAL-IP   PORT(S)   AGE
+service/kubernetes   ClusterIP   10.96.128.1   <none>        443/TCP   3h32m
+
+esartison@kubermgt01:~$ kubectl get nodes --ignore-not-found
+NAME                        STATUS   ROLES    AGE     VERSION
+cl1o2cumtlodjr8887jm-apez   Ready    <none>   3h17m   v1.32.1
+cl1o2cumtlodjr8887jm-ubor   Ready    <none>   3h17m   v1.32.1
+cl1o2cumtlodjr8887jm-utaq   Ready    <none>   3h17m   v1.32.1
 ```
 
 
