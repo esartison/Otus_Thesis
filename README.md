@@ -1,5 +1,4 @@
-# Otus_Thesis
-дипломная работа по Postges под управлением Kubernetes
+Дипломная работа по Postges под управлением Kubernetes
 
 
 ## **(1) Создать Kubernetes кластер**
@@ -148,4 +147,131 @@ cl1o2cumtlodjr8887jm-apez   Ready    <none>   3h17m   v1.32.1
 cl1o2cumtlodjr8887jm-ubor   Ready    <none>   3h17m   v1.32.1
 cl1o2cumtlodjr8887jm-utaq   Ready    <none>   3h17m   v1.32.1
 ```
+Kubernetes cluster готов для работы и можно проводить работы по установке Postgres-а.
 
+
+
+## **(2) Установки Postgres через Helm**
+В этом пункте будем устанавливать Postgres с помощью Helm 
+
+Установка утилиты Helm
+```
+esartison@kubermgt01:~$ sudo apt install snapd
+esartison@kubermgt01:~$ sudo snap install helm --classic
+2025-09-21T09:55:25Z INFO Waiting for automatic snapd restart...
+helm 3.19.0 from Snapcrafters✪ installed
+esartison@kubermgt01:~$
+```
+
+Установка Helm Chart-а Postgresql-ha
+```
+esartison@kubermgt01:~$ helm install my-release oci://registry-1.docker.io/bitnamicharts/postgresql-ha
+Pulled: registry-1.docker.io/bitnamicharts/postgresql-ha:16.3.2
+Digest: sha256:78ae138a11c4f6f058fcb18c94e57b0bb52b1b557f92975f70c0dd74b4eb2d94
+NAME: my-release
+LAST DEPLOYED: Sun Sep 21 09:58:05 2025
+NAMESPACE: default
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+NOTES:
+CHART NAME: postgresql-ha
+CHART VERSION: 16.3.2
+APP VERSION: 17.6.0
+
+⚠ WARNING: Since August 28th, 2025, only a limited subset of images/charts are available for free.
+    Subscribe to Bitnami Secure Images to receive continued support and security updates.
+    More info at https://bitnami.com and https://github.com/bitnami/containers/issues/83267
+
+** Please be patient while the chart is being deployed **
+PostgreSQL can be accessed through Pgpool-II via port 5432 on the following DNS name from within your cluster:
+
+    my-release-postgresql-ha-pgpool.default.svc.cluster.local
+
+Pgpool-II acts as a load balancer for PostgreSQL and forward read/write connections to the primary node while read-only connections are forwarded to standby nodes.
+
+To get the password for "postgres" user run:
+
+    export PASSWORD=$(kubectl get secret --namespace "default" my-release-postgresql-ha-postgresql -o jsonpath="{.data.password}" | base64 -d)
+
+To connect to your database run the following command:
+
+    kubectl run my-release-postgresql-ha-client --rm --tty -i --restart='Never' --namespace default \
+        --image docker.io/bitnami/postgresql-repmgr:17.6.0-debian-12-r2 --env="PGPASSWORD=$PASSWORD"  \
+        --command -- psql -h my-release-postgresql-ha-pgpool -p 5432 -U postgres -d postgres
+
+To connect to your database from outside the cluster execute the following commands:
+
+    kubectl port-forward --namespace default svc/my-release-postgresql-ha-pgpool 5432:5432 &
+    psql -h 127.0.0.1 -p 5432 -U postgres -d postgres
+
+WARNING: There are "resources" sections in the chart not set. Using "resourcesPreset" is not recommended for production. For production installations, please set the following values according to your workload needs:
+  - postgresql.resources
+  - pgpool.resources
++info https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+```
+
+Прверка POD-в
+```
+esartison@kubermgt01:~$ kubectl get all
+NAME                                                   READY   STATUS    RESTARTS        AGE
+pod/my-release-postgresql-ha-pgpool-6fc4b5d57c-xxhkx   1/1     Running   1 (3m24s ago)   4m25s
+pod/my-release-postgresql-ha-postgresql-0              1/1     Running   0               4m25s
+pod/my-release-postgresql-ha-postgresql-1              1/1     Running   0               4m25s
+pod/my-release-postgresql-ha-postgresql-2              1/1     Running   0               4m25s
+
+NAME                                                   TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)    AGE
+service/kubernetes                                     ClusterIP   10.96.128.1    <none>        443/TCP    5h6m
+service/my-release-postgresql-ha-pgpool                ClusterIP   10.96.183.88   <none>        5432/TCP   4m25s
+service/my-release-postgresql-ha-postgresql            ClusterIP   10.96.248.95   <none>        5432/TCP   4m25s
+service/my-release-postgresql-ha-postgresql-headless   ClusterIP   None           <none>        5432/TCP   4m25s
+
+NAME                                              READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/my-release-postgresql-ha-pgpool   1/1     1            1           4m25s
+
+NAME                                                         DESIRED   CURRENT   READY   AGE
+replicaset.apps/my-release-postgresql-ha-pgpool-6fc4b5d57c   1         1         1       4m25s
+
+NAME                                                   READY   AGE
+statefulset.apps/my-release-postgresql-ha-postgresql   3/3     4m25s
+```
+
+Проверим как POD-ы распределились по узлам(node), видим что мастер и 2 реплики были распределены по разным узлам
+```
+esartison@kubermgt01:~$ kubectl get all -o wide
+NAME                                                   READY   STATUS    RESTARTS     AGE   IP             NODE                        NOMINATED NODE   READINESS GATES
+pod/my-release-postgresql-ha-pgpool-6fc4b5d57c-xxhkx   1/1     Running   1 (9m ago)   10m   10.112.129.4   cl1o2cumtlodjr8887jm-ubor   <none>           <none>
+pod/my-release-postgresql-ha-postgresql-0              1/1     Running   0            10m   10.112.130.4   cl1o2cumtlodjr8887jm-apez   <none>           <none>
+pod/my-release-postgresql-ha-postgresql-1              1/1     Running   0            10m   10.112.129.5   cl1o2cumtlodjr8887jm-ubor   <none>           <none>
+pod/my-release-postgresql-ha-postgresql-2              1/1     Running   0            10m   10.112.128.6   cl1o2cumtlodjr8887jm-utaq   <none>           <none>
+
+NAME                                                   TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)    AGE     SELECTOR
+service/kubernetes                                     ClusterIP   10.96.128.1    <none>        443/TCP    5h11m   <none>
+service/my-release-postgresql-ha-pgpool                ClusterIP   10.96.183.88   <none>        5432/TCP   10m     app.kubernetes.io/component=pgpool,app.kubernetes.io/instance=my-release,app.kubernetes.io/name=postgresql-ha
+service/my-release-postgresql-ha-postgresql            ClusterIP   10.96.248.95   <none>        5432/TCP   10m     app.kubernetes.io/component=postgresql,app.kubernetes.io/instance=my-release,app.kubernetes.io/name=postgresql-ha,role=data
+service/my-release-postgresql-ha-postgresql-headless   ClusterIP   None           <none>        5432/TCP   10m     app.kubernetes.io/component=postgresql,app.kubernetes.io/instance=my-release,app.kubernetes.io/name=postgresql-ha,role=data
+
+NAME                                              READY   UP-TO-DATE   AVAILABLE   AGE   CONTAINERS   IMAGES                                        SELECTOR
+deployment.apps/my-release-postgresql-ha-pgpool   1/1     1            1           10m   pgpool       docker.io/bitnami/pgpool:4.6.3-debian-12-r0   app.kubernetes.io/component=pgpool,app.kubernetes.io/instance=my-release,app.kubernetes.io/name=postgresql-ha
+
+NAME                                                         DESIRED   CURRENT   READY   AGE   CONTAINERS   IMAGES                                        SELECTOR
+replicaset.apps/my-release-postgresql-ha-pgpool-6fc4b5d57c   1         1         1       10m   pgpool       docker.io/bitnami/pgpool:4.6.3-debian-12-r0   app.kubernetes.io/component=pgpool,app.kubernetes.io/instance=my-release,app.kubernetes.io/name=postgresql-ha,pod-template-hash=6fc4b5d57c
+
+NAME                                                   READY   AGE   CONTAINERS   IMAGES
+statefulset.apps/my-release-postgresql-ha-postgresql   3/3     10m   postgresql   docker.io/bitnami/postgresql-repmgr:17.6.0-debian-12-r2
+```
+
+
+Подключимся к нашей базе данных
+```
+# выставим переменные 
+export POSTGRES_PASSWORD=$(kubectl get secret --namespace default my-release-postgresql-ha-postgresql -o jsonpath="{.data.password}" | base64 -d)
+export REPMGR_PASSWORD=$(kubectl get secret --namespace default my-release-postgresql-ha-postgresql -o jsonpath="{.data.repmgr-password}" | base64 -d)
+
+# включим перенаправление портов, чтобы можно было подключаться с локального клиента, добавим в конце & чтобы команда выполнялась в фоне
+kubectl port-forward --namespace default svc/my-release-postgresql-ha-pgpool 5432:5432 &
+
+# в этом же окне подключиться к базе
+psql -h 127.0.0.1 -p 5432 -U postgres -d postgres 
+```
+<img width="648" height="161" alt="image" src="https://github.com/user-attachments/assets/cd00c8cf-b42f-4081-9075-e092a47b3a33" />
