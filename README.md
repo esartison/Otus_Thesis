@@ -149,11 +149,3 @@ cl1o2cumtlodjr8887jm-ubor   Ready    <none>   3h17m   v1.32.1
 cl1o2cumtlodjr8887jm-utaq   Ready    <none>   3h17m   v1.32.1
 ```
 
-
-### Выбрал следующую конфигурация
-![image](https://github.com/user-attachments/assets/3138052b-9367-4559-b0c6-161a73647826)
-
-### Создал Postgres cluster со следующими настройками
-
-![image](https://github.com/user-attachments/assets/499da419-5137-4cdf-9d2b-955323a2cbed)
-
