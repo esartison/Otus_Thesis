@@ -275,3 +275,138 @@ kubectl port-forward --namespace default svc/my-release-postgresql-ha-pgpool 543
 psql -h 127.0.0.1 -p 5432 -U postgres -d postgres 
 ```
 <img width="648" height="161" alt="image" src="https://github.com/user-attachments/assets/cd00c8cf-b42f-4081-9075-e092a47b3a33" />
+
+
+Эмуляция отказа мастер узла
+(a) подключаемся и узнаем какой из POD-в является мастером. В нашем случае мастер my-release-postgresql-ha-postgresql-0+
+<img width="618" height="341" alt="image" src="https://github.com/user-attachments/assets/f2e09650-1c7a-4a7e-82e9-83093d3964f5" />
+(b) Удаляем под для мастера
+<img width="931" height="369" alt="image" src="https://github.com/user-attachments/assets/63535931-b472-4f09-8fb6-d58088b6eda2" />
+(c) Пробуем еще раз подключиться и нас перенаправляет на my-release-postgresql-ha-postgresql-1+
+<img width="614" height="335" alt="image" src="https://github.com/user-attachments/assets/52ddaf35-767f-403c-a147-98cd8f3e7643" />
+
+Автоматический failover работает. 
+
+Удаление Helm Chart-а
+<img width="1163" height="294" alt="image" src="https://github.com/user-attachments/assets/bd2adf53-dfe5-4baf-8b8c-bb483ff063ce" />
+
+Недавно, было анонсировано что Bitnami вводит плату за пользование их чартами
+<img width="811" height="73" alt="image" src="https://github.com/user-attachments/assets/d85d42cc-7e10-417d-bc83-a78d7da5a5f3" />
+
+
+## **(2) Установки Postgres через CloudNativePG**
+
+Установка Оператора
+```
+esartison@kubermgt01:~/CloudNativePG$ kubectl apply -f https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/release-1.22/releases/cnpg-1.22.1.yaml
+namespace/cnpg-system configured
+customresourcedefinition.apiextensions.k8s.io/backups.postgresql.cnpg.io configured
+customresourcedefinition.apiextensions.k8s.io/clusters.postgresql.cnpg.io configured
+Warning: resource customresourcedefinitions/poolers.postgresql.cnpg.io is missing the kubectl.kubernetes.io/last-applied-configuration annotation which is required by kubectl apply. kubectl apply should only be used on resources created declaratively by either kubectl create --save-config or kubectl apply. The missing annotation will be patched automatically.
+customresourcedefinition.apiextensions.k8s.io/poolers.postgresql.cnpg.io configured
+customresourcedefinition.apiextensions.k8s.io/scheduledbackups.postgresql.cnpg.io configured
+serviceaccount/cnpg-manager configured
+clusterrole.rbac.authorization.k8s.io/cnpg-manager configured
+clusterrolebinding.rbac.authorization.k8s.io/cnpg-manager-rolebinding configured
+configmap/cnpg-default-monitoring configured
+service/cnpg-webhook-service configured
+deployment.apps/cnpg-controller-manager unchanged
+mutatingwebhookconfiguration.admissionregistration.k8s.io/cnpg-mutating-webhook-configuration configured
+validatingwebhookconfiguration.admissionregistration.k8s.io/cnpg-validating-webhook-configuration configured
+
+esartison@kubermgt01:~/CloudNativePG$ kubectl get deployment -n cnpg-system
+NAME                      READY   UP-TO-DATE   AVAILABLE   AGE
+cnpg-controller-manager   1/1     1            1           6h14m
+```
+
+
+Устанока Longhorn storage class-а
+```
+# установка longhorn
+esartison@kubermgt01:~$ kubectl apply -f https://raw.githubusercontent.com/longhorn/longhorn/v1.9.1/deploy/longhorn.yaml
+namespace/longhorn-system unchanged
+priorityclass.scheduling.k8s.io/longhorn-critical configured
+serviceaccount/longhorn-service-account unchanged
+serviceaccount/longhorn-ui-service-account unchanged
+serviceaccount/longhorn-support-bundle unchanged
+configmap/longhorn-default-resource unchanged
+configmap/longhorn-default-setting unchanged
+configmap/longhorn-storageclass unchanged
+customresourcedefinition.apiextensions.k8s.io/backingimagedatasources.longhorn.io unchanged
+customresourcedefinition.apiextensions.k8s.io/backingimagemanagers.longhorn.io unchanged
+customresourcedefinition.apiextensions.k8s.io/backingimages.longhorn.io unchanged
+customresourcedefinition.apiextensions.k8s.io/backupbackingimages.longhorn.io unchanged
+customresourcedefinition.apiextensions.k8s.io/backups.longhorn.io unchanged
+customresourcedefinition.apiextensions.k8s.io/backuptargets.longhorn.io unchanged
+customresourcedefinition.apiextensions.k8s.io/backupvolumes.longhorn.io unchanged
+customresourcedefinition.apiextensions.k8s.io/engineimages.longhorn.io unchanged
+customresourcedefinition.apiextensions.k8s.io/engines.longhorn.io unchanged
+customresourcedefinition.apiextensions.k8s.io/instancemanagers.longhorn.io unchanged
+customresourcedefinition.apiextensions.k8s.io/nodes.longhorn.io unchanged
+customresourcedefinition.apiextensions.k8s.io/orphans.longhorn.io unchanged
+customresourcedefinition.apiextensions.k8s.io/recurringjobs.longhorn.io unchanged
+customresourcedefinition.apiextensions.k8s.io/replicas.longhorn.io unchanged
+customresourcedefinition.apiextensions.k8s.io/settings.longhorn.io unchanged
+customresourcedefinition.apiextensions.k8s.io/sharemanagers.longhorn.io unchanged
+customresourcedefinition.apiextensions.k8s.io/snapshots.longhorn.io unchanged
+customresourcedefinition.apiextensions.k8s.io/supportbundles.longhorn.io unchanged
+customresourcedefinition.apiextensions.k8s.io/systembackups.longhorn.io unchanged
+customresourcedefinition.apiextensions.k8s.io/systemrestores.longhorn.io unchanged
+customresourcedefinition.apiextensions.k8s.io/volumeattachments.longhorn.io unchanged
+customresourcedefinition.apiextensions.k8s.io/volumes.longhorn.io unchanged
+clusterrole.rbac.authorization.k8s.io/longhorn-role unchanged
+clusterrolebinding.rbac.authorization.k8s.io/longhorn-bind unchanged
+clusterrolebinding.rbac.authorization.k8s.io/longhorn-support-bundle unchanged
+service/longhorn-backend unchanged
+service/longhorn-frontend configured
+service/longhorn-conversion-webhook unchanged
+service/longhorn-admission-webhook unchanged
+service/longhorn-recovery-backend unchanged
+daemonset.apps/longhorn-manager unchanged
+deployment.apps/longhorn-driver-deployer unchanged
+deployment.apps/longhorn-ui unchanged
+
+# создание ConfigMap-а
+esartison@kubermgt01:~$ cat apply.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: longhorn-storageclass-1r
+  namespace: longhorn-system
+  labels:
+    app.kubernetes.io/name: longhorn
+    app.kubernetes.io/instance: longhorn
+    app.kubernetes.io/version: v1.5.3
+data:
+  storageclass.yaml: |
+    kind: StorageClass
+    apiVersion: storage.k8s.io/v1
+    metadata:
+      name: longhorn-1r
+      annotations:
+        storageclass.kubernetes.io/is-default-class: "true"
+    provisioner: driver.longhorn.io
+    allowVolumeExpansion: true
+    reclaimPolicy: "Delete"
+    volumeBindingMode: Immediate
+    parameters:
+      numberOfReplicas: "1"
+      staleReplicaTimeout: "30"
+      fromBackup: ""
+      fsType: "ext4"
+      dataLocality: "disabled"
+	  
+	  
+esartison@kubermgt01:~$ kubectl apply -f apply.yaml
+configmap/longhorn-storageclass-1r created
+```
+
+Создание namespace-а
+```
+esartison@kubermgt01:~/CloudNativePG$ kubectl create namespace cnpg-kuber
+namespace/cnpg-kuber created
+```
+
+
+Создание Postgres кластера с минимальным набором настроек
+```
