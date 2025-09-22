@@ -408,5 +408,144 @@ namespace/cnpg-kuber created
 ```
 
 
-Создание Postgres кластера с минимальным набором настроек
+# Создание Postgres кластера с минимальным набором настроек и отработка простых сценариев
 ```
+# Yaml файл
+esartison@kubermgt01:~/CloudNativePG$ cat cluster-example.yaml
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: pg-simple-cluster
+spec:
+  instances: 3
+
+  storage:
+    size: 1Gi
+
+# Создание кластера посредством применения yaml файла
+esartison@kubermgt01:~/CloudNativePG$ kubectl apply -f cluster-example.yaml
+cluster.postgresql.cnpg.io/pg-simple-cluster created
+
+#Проверка состояния POD-в
+esartison@kubermgt01:~/CloudNativePG$  kubectl get all -o wide
+NAME                                   READY   STATUS      RESTARTS   AGE   IP             NODE                        NOMINATED NODE   READINESS GATES
+pod/pg-simple-cluster-1                1/1     Running     0          31s   10.112.129.9   cl1o2cumtlodjr8887jm-ubor   <none>           <none>
+pod/pg-simple-cluster-1-initdb-h54xj   0/1     Completed   0          86s   10.112.129.8   cl1o2cumtlodjr8887jm-ubor   <none>           <none>
+pod/pg-simple-cluster-2-join-bs4v2     0/1     Init:0/1    0          14s   <none>         cl1o2cumtlodjr8887jm-apez   <none>           <none>
+
+NAME                           TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE   SELECTOR
+service/kubernetes             ClusterIP   10.96.128.1     <none>        443/TCP    21h   <none>
+service/pg-simple-cluster-r    ClusterIP   10.96.165.64    <none>        5432/TCP   87s   cnpg.io/cluster=pg-simple-cluster,cnpg.io/podRole=instance
+service/pg-simple-cluster-ro   ClusterIP   10.96.176.150   <none>        5432/TCP   87s   cnpg.io/cluster=pg-simple-cluster,role=replica
+service/pg-simple-cluster-rw   ClusterIP   10.96.156.86    <none>        5432/TCP   87s   cnpg.io/cluster=pg-simple-cluster,role=primary
+
+NAME                                   STATUS     COMPLETIONS   DURATION   AGE   CONTAINERS   IMAGES                                   SELECTOR
+job.batch/pg-simple-cluster-1-initdb   Complete   1/1           55s        86s   initdb       ghcr.io/cloudnative-pg/postgresql:16.1   batch.kubernetes.io/controller-uid=eeb75b7b-094b-4168-81d8-459982628442
+job.batch/pg-simple-cluster-2-join     Running    0/1           14s        14s   join         ghcr.io/cloudnative-pg/postgresql:16.1   batch.kubernetes.io/controller-uid=a6b82fd2-88dc-4ca3-b930-82e70299bbf5
+esartison@kubermgt01:~/CloudNativePG$
+esartison@kubermgt01:~/CloudNativePG$
+esartison@kubermgt01:~/CloudNativePG$
+esartison@kubermgt01:~/CloudNativePG$ kubectl apply -f cluster-example.yaml
+cluster.postgresql.cnpg.io/pg-simple-cluster unchanged
+esartison@kubermgt01:~/CloudNativePG$ kubectl get all -o wide
+NAME                      READY   STATUS    RESTARTS   AGE     IP              NODE                        NOMINATED NODE   READINESS GATES
+pod/pg-simple-cluster-1   1/1     Running   0          2m43s   10.112.129.9    cl1o2cumtlodjr8887jm-ubor   <none>           <none>
+pod/pg-simple-cluster-2   1/1     Running   0          93s     10.112.130.10   cl1o2cumtlodjr8887jm-apez   <none>           <none>
+pod/pg-simple-cluster-3   1/1     Running   0          23s     10.112.128.10   cl1o2cumtlodjr8887jm-utaq   <none>           <none>
+
+NAME                           TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE     SELECTOR
+service/kubernetes             ClusterIP   10.96.128.1     <none>        443/TCP    21h     <none>
+service/pg-simple-cluster-r    ClusterIP   10.96.165.64    <none>        5432/TCP   3m39s   cnpg.io/cluster=pg-simple-cluster,cnpg.io/podRole=instance
+service/pg-simple-cluster-ro   ClusterIP   10.96.176.150   <none>        5432/TCP   3m39s   cnpg.io/cluster=pg-simple-cluster,role=replica
+service/pg-simple-cluster-rw   ClusterIP   10.96.156.86    <none>        5432/TCP   3m39s   cnpg.io/cluster=pg-simple-cluster,role=primary
+
+# Создание Load Balancer для подключения из вне
+esartison@kubermgt01:~/CloudNativePG$ kubectl -n default expose service pg-simple-cluster-rw  --name=test-cnpg-bones-lb --port=5432 --type=LoadBalancer
+
+# Получение секретов для подключения к базе данных
+esartison@kubermgt01:~/CloudNativePG$ kubectl get secret pg-simple-cluster-app -o jsonpath='{.data}'
+{"dbname":"YXBw","host":"cGctc2ltcGxlLWNsdXN0ZXItcnc=","jdbc-uri":"amRiYzpwb3N0Z3Jlc3FsOi8vcGctc2ltcGxlLWNsdXN0ZXItcnc6NTQzMi9hcHA/cGFzc3dvcmQ9TFNyWjJoTktQaWFxT0lWSjZjbFVDdFJhNUVTNEppdXFrM2FRMHdwOUwzSHh3dWlKS1VRUk4wSHVBOE5aVGJPbiZ1c2VyPWFwcA==","password":"TFNyWjJoTktQaWFxT0lWSjZjbFVDdFJhNUVTNEppdXFrM2FRMHdwOUwzSHh3dWlKS1VRUk4wSHVBOE5aVGJPbg==","pgpass":"cGctc2ltcGxlLWNsdXN0ZXItcnc6NTQzMjphcHA6YXBwOkxTcloyaE5LUGlhcU9JVko2Y2xVQ3RSYTVFUzRKaXVxazNhUTB3cDlMM0h4d3VpSktVUVJOMEh1QThOWlRiT24K","port":"NTQzMg==","uri":"cG9zdGdyZXNxbDovL2FwcDpMU3JaMmhOS1BpYXFPSVZKNmNsVUN0UmE1RVM0Sml1cWszYVEwd3A5TDNIeHd1aUpLVVFSTjBIdUE4TlpUYk9uQHBnLXNpbXBsZS1jbHVzdGVyLXJ3OjU0MzIvYXBw","user":"YXBw","username":"YXBw"}esartison@kubermgt01:~/CloudNativePG$ echo 'cGctc2ltcGxlLWNsdXN0ZXItcnc6NTQzMjphcHA6YXBwOkxTcloyaE5LUGlhcU9JVko2Y2xVQ3RSYTVFUzRKaXVxazNhUTB3cDlMM0h4d3VpSktVUVJOMEh1QThOWlRiT24K'  | base64 --decode
+pg-simple-cluster-rw:5432:app:app:LSrZ2hNKPiaqOIVJ6clUCtRa5ES4Jiuqk3aQ0wp9L3HxwuiJKUQRN0HuA8NZTbOn
+esartison@kubermgt01:~/CloudNativePG$ export PGPASSWORD=LSrZ2hNKPiaqOIVJ6clUCtRa5ES4Jiuqk3aQ0wp9L3HxwuiJKUQRN0HuA8NZTbOn
+
+# Подключение к базе данных
+esartison@kubermgt01:~/CloudNativePG$ psql -h 158.160.195.68 -U app -d app
+app=>
+app=>
+app=> \l
+                                                  List of databases
+   Name    |  Owner   | Encoding | Locale Provider | Collate | Ctype | ICU Locale | ICU Rules |   Access privileges
+-----------+----------+----------+-----------------+---------+-------+------------+-----------+-----------------------
+ app       | app      | UTF8     | libc            | C       | C     |            |           |
+ postgres  | postgres | UTF8     | libc            | C       | C     |            |           |
+ template0 | postgres | UTF8     | libc            | C       | C     |            |           | =c/postgres          +
+           |          |          |                 |         |       |            |           | postgres=CTc/postgres
+ template1 | postgres | UTF8     | libc            | C       | C     |            |           | =c/postgres          +
+           |          |          |                 |         |       |            |           | postgres=CTc/postgres
+(4 rows)
+
+
+# сократить кол-во экземпляров с 3 до 2х
+esartison@kubermgt01:~/CloudNativePG$ diff cluster-example.yaml cluster-example2.yaml
+6c6
+<   instances: 3
+---
+>   instances: 2
+
+esartison@kubermgt01:~/CloudNativePG$ kubectl apply -f cluster-example2.yaml
+cluster.postgresql.cnpg.io/pg-simple-cluster configured
+esartison@kubermgt01:~/CloudNativePG$  kubectl get all -o wide
+NAME                      READY   STATUS    RESTARTS   AGE   IP              NODE                        NOMINATED NODE   READINESS GATES
+pod/pg-simple-cluster-1   1/1     Running   0          92m   10.112.129.9    cl1o2cumtlodjr8887jm-ubor   <none>           <none>
+pod/pg-simple-cluster-2   1/1     Running   0          91m   10.112.130.10   cl1o2cumtlodjr8887jm-apez   <none>           <none>
+
+NAME                           TYPE           CLUSTER-IP      EXTERNAL-IP      PORT(S)          AGE   SELECTOR
+service/kubernetes             ClusterIP      10.96.128.1     <none>           443/TCP          23h   <none>
+service/pg-simple-cluster-r    ClusterIP      10.96.165.64    <none>           5432/TCP         93m   cnpg.io/cluster=pg-simple-cluster,cnpg.io/podRole=instance
+service/pg-simple-cluster-ro   ClusterIP      10.96.176.150   <none>           5432/TCP         93m   cnpg.io/cluster=pg-simple-cluster,role=replica
+service/pg-simple-cluster-rw   ClusterIP      10.96.156.86    <none>           5432/TCP         93m   cnpg.io/cluster=pg-simple-cluster,role=primary
+service/test-cnpg-bones-lb     LoadBalancer   10.96.169.23    158.160.195.68   5432:32621/TCP   58m   cnpg.io/cluster=pg-simple-cluster,role=primary
+Кол-во экземпляров сократилось
+
+
+
+```
+
+esartison@kubermgt01:~/CloudNativePG$ psql -h 158.160.195.68 -U app -d app
+app=> select version();
+                                                           version
+-----------------------------------------------------------------------------------------------------------------------------
+ PostgreSQL 16.2 (Debian 16.2-1.pgdg110+2) on x86_64-pc-linux-gnu, compiled by gcc (Debian 10.2.1-6) 10.2.1 20210110, 64-bit
+(1 row)
+
+esartison@kubermgt01:~/CloudNativePG$ diff cluster-example-upgrade.yaml cluster-example2.yaml
+6,7c6
+<   imageName: ghcr.io/cloudnative-pg/postgresql:16.10
+<   instances: 3
+---
+>   instances: 2
+
+esartison@kubermgt01:~/CloudNativePG$ kubectl apply -f cluster-example-upgrade.yaml
+cluster.postgresql.cnpg.io/pg-simple-cluster configured
+
+
+
+esartison@kubermgt01:~/CloudNativePG$ psql -h 158.160.195.68 -U app -d app
+app=> select version();
+                                                           version
+------------------------------------------------------------------------------------------------------------------------------
+ PostgreSQL 16.10 (Debian 16.10-1.pgdg11+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 10.2.1-6) 10.2.1 20210110, 64-bit
+(1 row)
+
+esartison@kubermgt01:~/CloudNativePG$ kubectl get all -o wide
+NAME                      READY   STATUS    RESTARTS   AGE     IP              NODE                        NOMINATED NODE   READINESS GATES
+pod/pg-simple-cluster-1   1/1     Running   0          8m15s   10.112.129.10   cl1o2cumtlodjr8887jm-ubor   <none>           <none>
+pod/pg-simple-cluster-2   1/1     Running   0          8m47s   10.112.130.11   cl1o2cumtlodjr8887jm-apez   <none>           <none>
+pod/pg-simple-cluster-4   1/1     Running   0          9m8s    10.112.128.12   cl1o2cumtlodjr8887jm-utaq   <none>           <none>
+
+NAME                           TYPE           CLUSTER-IP      EXTERNAL-IP      PORT(S)          AGE    SELECTOR
+service/kubernetes             ClusterIP      10.96.128.1     <none>           443/TCP          23h    <none>
+service/pg-simple-cluster-r    ClusterIP      10.96.165.64    <none>           5432/TCP         122m   cnpg.io/cluster=pg-simple-cluster,cnpg.io/podRole=instance
+service/pg-simple-cluster-ro   ClusterIP      10.96.176.150   <none>           5432/TCP         122m   cnpg.io/cluster=pg-simple-cluster,role=replica
+service/pg-simple-cluster-rw   ClusterIP      10.96.156.86    <none>           5432/TCP         122m   cnpg.io/cluster=pg-simple-cluster,role=primary
+service/test-cnpg-bones-lb     LoadBalancer   10.96.169.23    158.160.195.68   5432:32621/TCP   88m    cnpg.io/cluster=pg-simple-cluster,role=primary
