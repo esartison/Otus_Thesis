@@ -409,6 +409,8 @@ namespace/cnpg-kuber created
 
 
 # Создание Postgres кластера с минимальным набором настроек и отработка простых сценариев
+
+Создание Postgres кластера и подключение к базе данных
 ```
 # Yaml файл
 esartison@kubermgt01:~/CloudNativePG$ cat cluster-example.yaml
@@ -483,9 +485,12 @@ app=> \l
  template1 | postgres | UTF8     | libc            | C       | C     |            |           | =c/postgres          +
            |          |          |                 |         |       |            |           | postgres=CTc/postgres
 (4 rows)
+```
+В итоге было создано 1 мастер база и 2 реплики.
 
 
-# сократить кол-во экземпляров с 3 до 2х
+Сокращение кол-ва экземпляров с 3 до 2х
+```
 esartison@kubermgt01:~/CloudNativePG$ diff cluster-example.yaml cluster-example2.yaml
 6c6
 <   instances: 3
@@ -505,12 +510,14 @@ service/pg-simple-cluster-r    ClusterIP      10.96.165.64    <none>           5
 service/pg-simple-cluster-ro   ClusterIP      10.96.176.150   <none>           5432/TCP         93m   cnpg.io/cluster=pg-simple-cluster,role=replica
 service/pg-simple-cluster-rw   ClusterIP      10.96.156.86    <none>           5432/TCP         93m   cnpg.io/cluster=pg-simple-cluster,role=primary
 service/test-cnpg-bones-lb     LoadBalancer   10.96.169.23    158.160.195.68   5432:32621/TCP   58m   cnpg.io/cluster=pg-simple-cluster,role=primary
-Кол-во экземпляров сократилось
-
-
-
 ```
+Кол-во экземпляров сократилось до 2х. 1 мастер и 1 реплика. 
 
+
+
+Минорный апгрейди увеличение реплик с 1й до 2х
+```
+# проверка версии ДО - 16.2
 esartison@kubermgt01:~/CloudNativePG$ psql -h 158.160.195.68 -U app -d app
 app=> select version();
                                                            version
@@ -518,6 +525,7 @@ app=> select version();
  PostgreSQL 16.2 (Debian 16.2-1.pgdg110+2) on x86_64-pc-linux-gnu, compiled by gcc (Debian 10.2.1-6) 10.2.1 20210110, 64-bit
 (1 row)
 
+# Правки в YAML файле
 esartison@kubermgt01:~/CloudNativePG$ diff cluster-example-upgrade.yaml cluster-example2.yaml
 6,7c6
 <   imageName: ghcr.io/cloudnative-pg/postgresql:16.10
@@ -525,11 +533,11 @@ esartison@kubermgt01:~/CloudNativePG$ diff cluster-example-upgrade.yaml cluster-
 ---
 >   instances: 2
 
+# приминение конфигурации
 esartison@kubermgt01:~/CloudNativePG$ kubectl apply -f cluster-example-upgrade.yaml
 cluster.postgresql.cnpg.io/pg-simple-cluster configured
 
-
-
+# проверка версии ПОСЛЕ - 16.10
 esartison@kubermgt01:~/CloudNativePG$ psql -h 158.160.195.68 -U app -d app
 app=> select version();
                                                            version
@@ -537,6 +545,7 @@ app=> select version();
  PostgreSQL 16.10 (Debian 16.10-1.pgdg11+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 10.2.1-6) 10.2.1 20210110, 64-bit
 (1 row)
 
+# проверка что кол-во версий увеличилось
 esartison@kubermgt01:~/CloudNativePG$ kubectl get all -o wide
 NAME                      READY   STATUS    RESTARTS   AGE     IP              NODE                        NOMINATED NODE   READINESS GATES
 pod/pg-simple-cluster-1   1/1     Running   0          8m15s   10.112.129.10   cl1o2cumtlodjr8887jm-ubor   <none>           <none>
@@ -549,3 +558,16 @@ service/pg-simple-cluster-r    ClusterIP      10.96.165.64    <none>           5
 service/pg-simple-cluster-ro   ClusterIP      10.96.176.150   <none>           5432/TCP         122m   cnpg.io/cluster=pg-simple-cluster,role=replica
 service/pg-simple-cluster-rw   ClusterIP      10.96.156.86    <none>           5432/TCP         122m   cnpg.io/cluster=pg-simple-cluster,role=primary
 service/test-cnpg-bones-lb     LoadBalancer   10.96.169.23    158.160.195.68   5432:32621/TCP   88m    cnpg.io/cluster=pg-simple-cluster,role=primary
+```
+
+Удаление кластера
+```
+esartison@kubermgt01:~/CloudNativePG$     kubectl get cluster --all-namespaces
+NAMESPACE   NAME                AGE   INSTANCES   READY   STATUS                                       PRIMARY
+default     pg-simple-cluster   16h   3           1       Waiting for the instances to become active   pg-simple-cluster-1
+esartison@kubermgt01:~/CloudNativePG$  kubectl delete cluster pg-simple-cluster n default
+cluster.postgresql.cnpg.io "pg-simple-cluster" deleted from default namespace
+```
+
+
+
