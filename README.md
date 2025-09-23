@@ -35,7 +35,18 @@
 <img width="452" height="209" alt="image" src="https://github.com/user-attachments/assets/a6070c02-1317-46a4-b95e-61f21d9be579" />
 
 
-### Настройка kubermgt01 для управления нашим Kubernetes cluster
+
+
+
+## **(2) Настройка kubermgt01 для управления нашим Kubernetes cluster**
+Нужна простая virtual machine на Ubuntu для управления нашим Kubernetes кластером. Разворачиваю в облаке.
+
+
+### Создание VM с Ubuntu для управления нашим Kubernetes cluster
+<img width="452" height="209" alt="image" src="https://github.com/user-attachments/assets/a6070c02-1317-46a4-b95e-61f21d9be579" />
+
+
+### Настройка утилит для управления Kubernetes cluster
 ```
 # установка утилиты yc
 curl -sSL https://storage.yandexcloud.net/yandexcloud-yc/install.sh | bash
@@ -152,7 +163,9 @@ Kubernetes cluster готов для работы и можно проводит
 
 
 
-## **(2) Установки Postgres через Helm**
+
+
+## **(3) Установки Postgres через Helm**
 В этом пункте будем устанавливать Postgres с помощью Helm 
 
 Установка утилиты Helm
