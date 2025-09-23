@@ -570,4 +570,291 @@ cluster.postgresql.cnpg.io "pg-simple-cluster" deleted from default namespace
 ```
 
 
+#Создание Postgres кластера с более продвинутым набором настроек и отработка простых сценариев
+```
+esartison@kubermgt01:~/CloudNativePG$ cat advanced_PG_cluster.yaml
 
+apiVersion: v1
+data:
+  password: VHhWZVE0bk44MlNTaVlIb3N3cU9VUlp2UURhTDRLcE5FbHNDRUVlOWJ3RHhNZDczS2NrSWVYelM1Y1U2TGlDMg==
+  username: YXBw
+kind: Secret
+metadata:
+  name: pgotuscluster-app-user
+type: kubernetes.io/basic-auth
+---
+apiVersion: v1
+data:
+  password: dU4zaTFIaDBiWWJDYzRUeVZBYWNCaG1TemdxdHpxeG1PVmpBbjBRSUNoc0pyU211OVBZMmZ3MnE4RUtLTHBaOQ==
+  username: cG9zdGdyZXM=
+kind: Secret
+metadata:
+  name: pgotuscluster-superuser
+type: kubernetes.io/basic-auth
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: backup-creds
+data:
+  ACCESS_KEY_ID: a2V5X2lk
+  ACCESS_SECRET_KEY: c2VjcmV0X2tleQ==
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: pgotuscluster-full
+spec:
+  description: "Example of cluster"
+  imageName: ghcr.io/cloudnative-pg/postgresql:17.5
+  # imagePullSecret is only required if the images are located in a private registry
+  # imagePullSecrets:
+  #   - name: private_registry_access
+  instances: 3
+  startDelay: 300
+  stopDelay: 300
+  primaryUpdateStrategy: unsupervised
+
+  postgresql:
+    parameters:
+      shared_buffers: 256MB
+      pg_stat_statements.max: '10000'
+      pg_stat_statements.track: all
+      auto_explain.log_min_duration: '10s'
+    pg_hba:
+      - host all all 10.244.0.0/16 md5
+
+  bootstrap:
+    initdb:
+      database: app
+      owner: app
+      secret:
+        name: pgotuscluster-app-user
+    # Alternative bootstrap method: start from a backup
+    #recovery:
+    #  backup:
+    #    name: backup-example
+
+  enableSuperuserAccess: true
+  superuserSecret:
+    name: pgotuscluster-superuser
+
+  storage:
+    size: 1Gi
+
+  backup:
+    barmanObjectStore:
+      destinationPath: s3://pgotuscluster-full-backup/
+      endpointURL: http://custom-endpoint:1234
+      s3Credentials:
+        accessKeyId:
+          name: backup-creds
+          key: ACCESS_KEY_ID
+        secretAccessKey:
+          name: backup-creds
+          key: ACCESS_SECRET_KEY
+      wal:
+        compression: gzip
+        encryption: AES256
+      data:
+        compression: gzip
+        encryption: AES256
+        immediateCheckpoint: false
+        jobs: 2
+    retentionPolicy: "30d"
+
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "1"
+    limits:
+      memory: "1Gi"
+      cpu: "2"
+
+  affinity:
+    enablePodAntiAffinity: false
+    topologyKey: failure-domain.beta.kubernetes.io/zone
+
+  nodeMaintenanceWindow:
+    inProgress: false
+    reusePVC: false
+
+
+esartison@kubermgt01:~/CloudNativePG$ kubectl apply -f advanced_PG_cluster.yaml
+secret/pgotuscluster-app-user created
+secret/pgotuscluster-superuser created
+secret/backup-creds created
+cluster.postgresql.cnpg.io/pgotuscluster-full created
+esartison@kubermgt01:~/CloudNativePG$
+```
+
+
+```
+esartison@kubermgt01:~/CloudNativePG$ kubectl get all -o wide
+NAME                       READY   STATUS    RESTARTS   AGE     IP              NODE                        NOMINATED NODE   READINESS GATES
+pod/pgotuscluster-full-1   1/1     Running   0          4m20s   10.112.130.16   cl1o2cumtlodjr8887jm-apez   <none>           <none>
+pod/pgotuscluster-full-2   1/1     Running   0          2m47s   10.112.129.18   cl1o2cumtlodjr8887jm-ubor   <none>           <none>
+pod/pgotuscluster-full-3   1/1     Running   0          75s     10.112.128.25   cl1o2cumtlodjr8887jm-utaq   <none>           <none>
+
+NAME                            TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE     SELECTOR
+service/kubernetes              ClusterIP   10.96.128.1     <none>        443/TCP    5m47s   <none>
+service/pgotuscluster-full-r    ClusterIP   10.96.151.151   <none>        5432/TCP   5m24s   cnpg.io/cluster=pgotuscluster-full,cnpg.io/podRole=instance
+service/pgotuscluster-full-ro   ClusterIP   10.96.170.28    <none>        5432/TCP   5m24s   cnpg.io/cluster=pgotuscluster-full,role=replica
+service/pgotuscluster-full-rw   ClusterIP   10.96.244.224   <none>        5432/TCP   5m24s   cnpg.io/cluster=pgotuscluster-full,role=primary
+```
+
+
+
+
+
+
+#Изменение параметра в Postgres в бегущем экземпляре
+
+
+esartison@kubermgt01:~/CloudNativePG$ kubectl exec -it pod/pgotuscluster-full-1 -- psql -U postgres
+Defaulted container "postgres" out of: postgres, bootstrap-controller (init)
+psql (17.5 (Debian 17.5-1.pgdg110+1))
+Type "help" for help.
+
+postgres=# show log_statement;
+ log_statement
+---------------
+ none
+(1 row)
+
+
+esartison@kubermgt01:~/CloudNativePG$ cat cluster-example-update_parameter.yaml
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: pgotuscluster-full
+spec:
+  description: "Example of cluster"
+  imageName: ghcr.io/cloudnative-pg/postgresql:17.5
+
+  postgresql:
+    parameters:
+      log_statement: ddl
+
+  storage:
+    size: 1Gi
+
+esartison@kubermgt01:~/CloudNativePG$ kubectl apply -f cluster-example-update_parameter.yaml
+cluster.postgresql.cnpg.io/pgotuscluster-full configured
+
+esartison@kubermgt01:~/CloudNativePG$ kubectl exec -it pod/pgotuscluster-full-1 -- psql -U postgres
+Defaulted container "postgres" out of: postgres, bootstrap-controller (init)
+psql (17.5 (Debian 17.5-1.pgdg110+1))
+Type "help" for help.
+
+postgres=# show log_statement;
+ log_statement
+---------------
+ ddl
+(1 row)
+
+
+
+
+
+
+#Monitoring
+https://grafana.com/grafana/dashboards/20417-cloudnativepg/
+
+
+esartison@kubermgt01:~/CloudNativePG$ kubectl apply -f cluster-example-update_monitoring.yaml
+cluster.postgresql.cnpg.io/pgotuscluster-full configured
+
+esartison@kubermgt01:~/CloudNativePG$ kubectl apply -f cluster-example-update_monitoring.yaml
+cluster.postgresql.cnpg.io/pgotuscluster-full configured
+esartison@kubermgt01:~/CloudNativePG$ cat cluster-example-update_monitoring.yaml
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: pgotuscluster-full
+spec:
+  description: "Example of cluster"
+  imageName: ghcr.io/cloudnative-pg/postgresql:17.5
+
+  storage:
+    size: 1Gi
+  monitoring:
+    enablePodMonitor: true
+esartison@kubermgt01:~/CloudNativePG$
+
+
+
+
+
+
+
+
+esartison@kubermgt01:~/CloudNativePG$ cat cluster-example-update_add_metric.yaml
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: pgotuscluster-full
+spec:
+  description: "Example of cluster"
+  imageName: ghcr.io/cloudnative-pg/postgresql:17.5
+  instances: 3
+
+  storage:
+    size: 1Gi
+  monitoring:
+    customQueriesConfigMap:
+      - name: additional-monitoring
+        key:  custom-queries
+esartison@kubermgt01:~/CloudNativePG$ kubectl apply -f cluster-example-update_add_metric.yaml
+cluster.postgresql.cnpg.io/pgotuscluster-full configured
+
+
+
+
+
+
+
+
+
+esartison@kubermgt01:~/CloudNativePG$ cat cluster-example-update_add_conf_map.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: additional-monitoring
+  namespace: default
+  labels:
+    cnpg.io/reload: ""
+data:
+  custom-queries: |
+    pg_replication:
+      query: "SELECT CASE WHEN NOT pg_is_in_recovery()
+              THEN 0
+              ELSE GREATEST (0,
+                EXTRACT(EPOCH FROM (now() - pg_last_xact_replay_timestamp())))
+              END AS lag,
+              pg_is_in_recovery() AS in_recovery,
+              EXISTS (TABLE pg_stat_wal_receiver) AS is_wal_receiver_up,
+              (SELECT count(*) FROM pg_stat_replication) AS streaming_replicas"
+
+      metrics:
+        - lag:
+            usage: "GAUGE"
+            description: "Replication lag behind primary in seconds"
+        - in_recovery:
+            usage: "GAUGE"
+            description: "Whether the instance is in recovery"
+        - is_wal_receiver_up:
+            usage: "GAUGE"
+            description: "Whether the instance wal_receiver is up"
+        - streaming_replicas:
+            usage: "GAUGE"
+            description: "Number of streaming replicas connected to the instance"
+
+esartison@kubermgt01:~/CloudNativePG$ kubectl apply -f cluster-example-update_add_conf_map.yaml
+configmap/additional-monitoring created
+
+
+
+
+
+https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/main/config/manager/default-monitoring.yaml
