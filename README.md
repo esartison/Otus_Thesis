@@ -715,11 +715,11 @@ service/pgotuscluster-full-rw   ClusterIP   10.96.244.224   <none>        5432/T
 
 
 
-#Изменение параметра в Postgres в бегущем экземпляре
+# Изменение параметра в Postgres в бегущем экземпляре
 
 В Postgres под управлением Kubernetes, мы не можем менять конфиги напряму и нужно делать через сам Kubernetes.
 
-Подгтовил yaml файл и применил его, после этого проверил что параметр поменялся
+Подготовил yaml файл и применил его, после этого проверил что параметр поменялся
 ```
 # Значение ДО
 esartison@kubermgt01:~/CloudNativePG$ kubectl exec -it pod/pgotuscluster-full-1 -- psql -U postgres
@@ -771,37 +771,10 @@ postgres=# show log_statement;
 
 
 
-#Monitoring
-https://grafana.com/grafana/dashboards/20417-cloudnativepg/
+# Добавление ка
 
-
-esartison@kubermgt01:~/CloudNativePG$ kubectl apply -f cluster-example-update_monitoring.yaml
-cluster.postgresql.cnpg.io/pgotuscluster-full configured
-
-esartison@kubermgt01:~/CloudNativePG$ kubectl apply -f cluster-example-update_monitoring.yaml
-cluster.postgresql.cnpg.io/pgotuscluster-full configured
-esartison@kubermgt01:~/CloudNativePG$ cat cluster-example-update_monitoring.yaml
-apiVersion: postgresql.cnpg.io/v1
-kind: Cluster
-metadata:
-  name: pgotuscluster-full
-spec:
-  description: "Example of cluster"
-  imageName: ghcr.io/cloudnative-pg/postgresql:17.5
-
-  storage:
-    size: 1Gi
-  monitoring:
-    enablePodMonitor: true
-esartison@kubermgt01:~/CloudNativePG$
-
-
-
-
-
-
-
-
+Создание ConfigMap-а additional-monitoring
+```
 esartison@kubermgt01:~/CloudNativePG$ cat cluster-example-update_add_metric.yaml
 apiVersion: postgresql.cnpg.io/v1
 kind: Cluster
@@ -818,17 +791,54 @@ spec:
     customQueriesConfigMap:
       - name: additional-monitoring
         key:  custom-queries
+
 esartison@kubermgt01:~/CloudNativePG$ kubectl apply -f cluster-example-update_add_metric.yaml
 cluster.postgresql.cnpg.io/pgotuscluster-full configured
 
+```
 
 
+Включение enablePodMonitor и добавление additional-monitoring в блок custom-queries
+```
+esartison@kubermgt01:~/CloudNativePG$ cat cluster-example-update_add_metric.yaml
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: pgotuscluster-full
+spec:
+  description: "Example of cluster"
+  imageName: ghcr.io/cloudnative-pg/postgresql:17.5
+  instances: 3
+
+  storage:
+    size: 1Gi
+  monitoring:
+    customQueriesConfigMap:
+      - name: additional-monitoring
+        key:  custom-queries
+    enablePodMonitor: true
+esartison@kubermgt01:~/CloudNativePG$ kubectl apply -f cluster-example-update_add_metric.yaml
+cluster.postgresql.cnpg.io/pgotuscluster-full configured
+esartison@kubermgt01:~/CloudNativePG$ kubectl get cluster pgotuscluster-full   -o jsonpath="{.spec.monitoring}"  | jq -C
+{
+  "customQueriesConfigMap": [
+    {
+      "key": "queries",
+      "name": "cnpg-default-monitoring"
+    },
+    {
+      "key": "custom-queries",
+      "name": "additional-monitoring"
+    }
+  ],
+  "disableDefaultQueries": false,
+  "enablePodMonitor": true
+}
+```
 
 
-
-
-
-
+Добавление кастомных метрик в мониторинг
+```
 esartison@kubermgt01:~/CloudNativePG$ cat cluster-example-update_add_conf_map.yaml
 apiVersion: v1
 kind: ConfigMap
@@ -865,9 +875,5 @@ data:
 
 esartison@kubermgt01:~/CloudNativePG$ kubectl apply -f cluster-example-update_add_conf_map.yaml
 configmap/additional-monitoring created
+```
 
-
-
-
-
-https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/main/config/manager/default-monitoring.yaml
