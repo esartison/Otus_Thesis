@@ -31,12 +31,6 @@
 <img width="1583" height="333" alt="image" src="https://github.com/user-attachments/assets/3fbd7906-14b8-437a-9ab6-8ea9a390a940" />
 
 
-### Создание VM с Ubuntu для управления нашим Kubernetes cluster
-<img width="452" height="209" alt="image" src="https://github.com/user-attachments/assets/a6070c02-1317-46a4-b95e-61f21d9be579" />
-
-
-
-
 
 ## **(2) Настройка kubermgt01 для управления нашим Kubernetes cluster**
 Нужна простая virtual machine на Ubuntu для управления нашим Kubernetes кластером. Разворачиваю в облаке.
