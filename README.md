@@ -584,7 +584,9 @@ cluster.postgresql.cnpg.io "pg-simple-cluster" deleted from default namespace
 ```
 
 
-#Создание Postgres кластера с более продвинутым набором настроек и отработка простых сценариев
+### Создание Postgres кластера с более продвинутым набором настроек и отработка простых сценариев
+
+Взял как пример YAML файл, в котором уже указаны настройки для бэкапа, ресурсы, параметры самого экземпляра и тд. Применяем этот YAML файл:
 ```
 esartison@kubermgt01:~/CloudNativePG$ cat advanced_PG_cluster.yaml
 
@@ -621,9 +623,8 @@ metadata:
 spec:
   description: "Example of cluster"
   imageName: ghcr.io/cloudnative-pg/postgresql:17.5
-  # imagePullSecret is only required if the images are located in a private registry
-  # imagePullSecrets:
-  #   - name: private_registry_access
+
+#   - name: private_registry_access
   instances: 3
   startDelay: 300
   stopDelay: 300
@@ -644,11 +645,7 @@ spec:
       owner: app
       secret:
         name: pgotuscluster-app-user
-    # Alternative bootstrap method: start from a backup
-    #recovery:
-    #  backup:
-    #    name: backup-example
-
+    
   enableSuperuserAccess: true
   superuserSecret:
     name: pgotuscluster-superuser
@@ -693,7 +690,6 @@ spec:
     inProgress: false
     reusePVC: false
 
-
 esartison@kubermgt01:~/CloudNativePG$ kubectl apply -f advanced_PG_cluster.yaml
 secret/pgotuscluster-app-user created
 secret/pgotuscluster-superuser created
@@ -702,7 +698,7 @@ cluster.postgresql.cnpg.io/pgotuscluster-full created
 esartison@kubermgt01:~/CloudNativePG$
 ```
 
-
+Проверяем что master и реплики создались как мы и запросили - все хорошо и все запустилось
 ```
 esartison@kubermgt01:~/CloudNativePG$ kubectl get all -o wide
 NAME                       READY   STATUS    RESTARTS   AGE     IP              NODE                        NOMINATED NODE   READINESS GATES
@@ -719,12 +715,13 @@ service/pgotuscluster-full-rw   ClusterIP   10.96.244.224   <none>        5432/T
 
 
 
-
-
-
 #Изменение параметра в Postgres в бегущем экземпляре
 
+В Postgres под управлением Kubernetes, мы не можем менять конфиги напряму и нужно делать через сам Kubernetes.
 
+Подгтовил yaml файл и применил его, после этого проверил что параметр поменялся
+```
+# Значение ДО
 esartison@kubermgt01:~/CloudNativePG$ kubectl exec -it pod/pgotuscluster-full-1 -- psql -U postgres
 Defaulted container "postgres" out of: postgres, bootstrap-controller (init)
 psql (17.5 (Debian 17.5-1.pgdg110+1))
@@ -736,7 +733,7 @@ postgres=# show log_statement;
  none
 (1 row)
 
-
+# Yaml файл и его применение 
 esartison@kubermgt01:~/CloudNativePG$ cat cluster-example-update_parameter.yaml
 apiVersion: postgresql.cnpg.io/v1
 kind: Cluster
@@ -756,6 +753,7 @@ spec:
 esartison@kubermgt01:~/CloudNativePG$ kubectl apply -f cluster-example-update_parameter.yaml
 cluster.postgresql.cnpg.io/pgotuscluster-full configured
 
+# Значение После
 esartison@kubermgt01:~/CloudNativePG$ kubectl exec -it pod/pgotuscluster-full-1 -- psql -U postgres
 Defaulted container "postgres" out of: postgres, bootstrap-controller (init)
 psql (17.5 (Debian 17.5-1.pgdg110+1))
@@ -765,7 +763,8 @@ postgres=# show log_statement;
  log_statement
 ---------------
  ddl
-(1 row)
+```
+Все отработало. 
 
 
 
