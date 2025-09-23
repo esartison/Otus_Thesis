@@ -294,7 +294,7 @@ psql -h 127.0.0.1 -p 5432 -U postgres -d postgres
 
 
 
-Эмуляция отказа мастер узла
+###Эмуляция отказа мастер узла
 
 (a) подключаемся и узнаем какой из POD-в является мастером. В нашем случае мастер my-release-postgresql-ha-postgresql-0+
 <img width="618" height="341" alt="image" src="https://github.com/user-attachments/assets/f2e09650-1c7a-4a7e-82e9-83093d3964f5" />
@@ -314,7 +314,7 @@ psql -h 127.0.0.1 -p 5432 -U postgres -d postgres
 <img width="811" height="73" alt="image" src="https://github.com/user-attachments/assets/d85d42cc-7e10-417d-bc83-a78d7da5a5f3" />
 
 
-## **(2) Установки Postgres через CloudNativePG**
+## **(4) Установки Postgres через CloudNativePG**
 
 Установка Оператора
 ```
