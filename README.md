@@ -288,7 +288,6 @@ kubectl port-forward --namespace default svc/my-release-postgresql-ha-pgpool 543
 # в этом же окне подключиться к базе
 psql -h 127.0.0.1 -p 5432 -U postgres -d postgres 
 ```
-
 <img width="648" height="161" alt="image" src="https://github.com/user-attachments/assets/cd00c8cf-b42f-4081-9075-e092a47b3a33" />
 
 
@@ -296,6 +295,7 @@ psql -h 127.0.0.1 -p 5432 -U postgres -d postgres
 
 
 Эмуляция отказа мастер узла
+
 (a) подключаемся и узнаем какой из POD-в является мастером. В нашем случае мастер my-release-postgresql-ha-postgresql-0+
 <img width="618" height="341" alt="image" src="https://github.com/user-attachments/assets/f2e09650-1c7a-4a7e-82e9-83093d3964f5" />
 
