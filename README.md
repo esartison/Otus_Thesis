@@ -7,6 +7,7 @@
 
 ### Создаем высокодоступный Kubernetes кластер в 3х разных зонах доступности
 <img width="531" height="484" alt="image" src="https://github.com/user-attachments/assets/ef879d8f-cb15-4c05-9e9c-1e2f664818b1" />
+
 Остальные настройки оставляем по умолчанию. 
 
 кластер успешно создался
