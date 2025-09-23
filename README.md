@@ -165,7 +165,7 @@ Kubernetes cluster готов для работы и можно проводит
 
 
 
-## **(3) Установки Postgres через Helm**
+## **(3) Установки Postgres через Helm и проведения сценария Failover**
 В этом пункте будем устанавливать Postgres с помощью Helm 
 
 Установка утилиты Helm
@@ -288,14 +288,20 @@ kubectl port-forward --namespace default svc/my-release-postgresql-ha-pgpool 543
 # в этом же окне подключиться к базе
 psql -h 127.0.0.1 -p 5432 -U postgres -d postgres 
 ```
+
 <img width="648" height="161" alt="image" src="https://github.com/user-attachments/assets/cd00c8cf-b42f-4081-9075-e092a47b3a33" />
+
+
+
 
 
 Эмуляция отказа мастер узла
 (a) подключаемся и узнаем какой из POD-в является мастером. В нашем случае мастер my-release-postgresql-ha-postgresql-0+
 <img width="618" height="341" alt="image" src="https://github.com/user-attachments/assets/f2e09650-1c7a-4a7e-82e9-83093d3964f5" />
+
 (b) Удаляем под для мастера
 <img width="931" height="369" alt="image" src="https://github.com/user-attachments/assets/63535931-b472-4f09-8fb6-d58088b6eda2" />
+
 (c) Пробуем еще раз подключиться и нас перенаправляет на my-release-postgresql-ha-postgresql-1+
 <img width="614" height="335" alt="image" src="https://github.com/user-attachments/assets/52ddaf35-767f-403c-a147-98cd8f3e7643" />
 
